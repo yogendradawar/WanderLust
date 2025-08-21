@@ -1,0 +1,351 @@
+<% layout("/layouts/boilerplate") %> <% if (typeof searchQuery !== 'undefined'
+&& searchQuery) { %>
+<div class="alert alert-info">
+  <strong>Found <%=allListings.length%> Search results for:</strong> "<%=
+  searchQuery %>"
+</div>
+<% } %>
+
+<div id="filters-main">
+  <div id="filters">
+    <div class="filter" data-category="all">
+      <div><i class="fa-solid fa-list"></i></div>
+      <p>All</p>
+    </div>
+    <div class="filter" data-category="trending">
+      <div><i class="fa-solid fa-fire"></i></div>
+      <p>Trending</p>
+    </div>
+    <div class="filter" data-category="room">
+      <div><i class="fa-solid fa-bed"></i></div>
+      <p>Room</p>
+    </div>
+    <div class="filter" data-category="iconic">
+      <div><i class="fa-solid fa-mountain-city"></i></div>
+      <p>Iconic Cities</p>
+    </div>
+    <div class="filter" data-category="mountain">
+      <div><i class="fa-solid fa-mountain"></i></div>
+      <p>Mountain</p>
+    </div>
+    <div class="filter" data-category="castle">
+      <div><i class="fa-brands fa-fort-awesome"></i></div>
+      <p>Castles</p>
+    </div>
+    <!-- <div class="filter" data-category="pool">
+      <div><i class="fa-solid fa-person-swimming"></i></div>
+      <p>Amazing Pools</p>
+    </div> -->
+    <!-- <div class="filter" data-category="camping">
+      <div><i class="fa-solid fa-campground"></i></div>
+      <p>Camping</p>
+    </div> -->
+    <!-- <div class="filter" data-category="farm">
+      <div><i class="fa-solid fa-cow"></i></div>
+      <p>Farm</p>
+    </div> -->
+    <div class="filter" data-category="snow">
+      <div><i class="fa-solid fa-snowflake"></i></div>
+      <p>Snow</p>
+    </div>
+    <div class="filter" data-category="dome">
+      <div><i class="fa-solid fa-igloo"></i></div>
+      <p>Domes</p>
+    </div>
+    <div class="tax-toggle">
+      <div class="form-check form-switch form-check-reverse">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          role="switch"
+          id="flexSwitchCheckDefault"
+        />
+        <label class="form-check-label" for="flexSwitchCheckDefault"
+          >Display total after taxes</label
+        >
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter status display -->
+<div id="filter-status" style="margin: 1rem 0; display: none">
+  <div class="alert alert-secondary">
+    <span id="filter-message"></span>
+    <button
+      type="button"
+      class="btn-close float-end"
+      id="clear-filter"
+    ></button>
+  </div>
+</div>
+
+<div
+  class="row row-cols-lg-3 row-cols-md-2 row-cols-sm-1"
+  id="listings-container"
+>
+  <% for(let listing of allListings){ %>
+  <a
+    href="/listings/<%=listing._id%>"
+    class="Listing-links listing-item"
+    data-title="<%=listing.title.toLowerCase()%>"
+    data-location="<%=listing.location.toLowerCase()%>"
+    data-country="<%=listing.country.toLowerCase()%>"
+  >
+    <div class="card col listing-card">
+      <img
+        src="<%=listing.image.url%>"
+        class="card-img-top"
+        alt="..."
+        style="height: 20rem"
+      />
+      <div class="card-img-overlay"></div>
+      <div class="card-body" style="margin-bottom: 3rem">
+        <p class="card-text">
+          <b><%=listing.title%></b> <br />
+          &#8377; <%=listing.price ? listing.price.toLocaleString("en-IN") :
+          "Price not available"%> / Night
+          <i class="tax-info"> &nbsp; +18% GST </i>
+        </p>
+      </div>
+    </div>
+  </a>
+  <% } %>
+</div>
+
+<script>
+  // Tax switch functionality (existing)
+  let taxSwitch = document.getElementById("flexSwitchCheckDefault");
+  taxSwitch.addEventListener("click", () => {
+    let taxInfo = document.getElementsByClassName("tax-info");
+    for (info of taxInfo) {
+      if (info.style.display != "inline") {
+        info.style.display = "inline";
+      } else {
+        info.style.display = "none";
+      }
+    }
+  });
+
+  // Filter functionality
+  const filters = document.querySelectorAll(".filter[data-category]");
+  const listings = document.querySelectorAll(".listing-item");
+  const filterStatus = document.getElementById("filter-status");
+  const filterMessage = document.getElementById("filter-message");
+  const clearFilter = document.getElementById("clear-filter");
+
+  // Define filter keywords for each category
+  const filterKeywords = {
+    trending: ["popular", "trending", "hot", "famous", "best"],
+    room: ["room", "suite", "bedroom", "apartment", "studio"],
+    iconic: ["city", "urban", "downtown", "metropolitan", "skyline"],
+    mountain: ["mountain", "hill", "peak", "alpine", "highland"],
+    castle: ["castle", "palace", "manor", "fort", "historic"],
+    pool: ["pool", "swimming", "spa", "jacuzzi", "water"],
+    camping: ["camp", "tent", "outdoor", "wilderness", "nature"],
+    farm: ["farm", "rural", "countryside", "ranch", "agricultural"],
+    snow: ["snow", "ski", "winter", "alpine", "cold"],
+    dome: ["dome", "geodesic", "unique", "round", "pod"],
+  };
+
+  filters.forEach((filter) => {
+    filter.addEventListener("click", () => {
+      const category = filter.getAttribute("data-category");
+
+      // Remove active class from all filters
+      filters.forEach((f) => f.classList.remove("active"));
+
+      // Add active class to clicked filter
+      filter.classList.add("active");
+
+      if (category === "all") {
+        // Show all listings
+        showAllListings();
+        hideFilterStatus();
+      } else {
+        // Filter listings based on category
+        filterListings(category);
+        showFilterStatus(category);
+      }
+    });
+  });
+
+  function filterListings(category) {
+    const keywords = filterKeywords[category] || [];
+    let visibleCount = 0;
+
+    listings.forEach((listing) => {
+      const title = listing.getAttribute("data-title");
+      const location = listing.getAttribute("data-location");
+      const country = listing.getAttribute("data-country");
+
+      const text = `${title} ${location} ${country}`;
+      const matches = keywords.some((keyword) => text.includes(keyword));
+
+      if (matches) {
+        listing.style.display = "block";
+        visibleCount++;
+      } else {
+        listing.style.display = "none";
+      }
+    });
+
+    return visibleCount;
+  }
+
+  function showAllListings() {
+    listings.forEach((listing) => {
+      listing.style.display = "block";
+    });
+  }
+
+  function showFilterStatus(category) {
+    const visibleCount = document.querySelectorAll(
+      '.listing-item[style*="block"], .listing-item:not([style*="none"])'
+    ).length;
+    filterMessage.textContent = `Showing ${visibleCount} ${category} listings`;
+    filterStatus.style.display = "block";
+  }
+
+  function hideFilterStatus() {
+    filterStatus.style.display = "none";
+  }
+
+  // Clear filter functionality
+  clearFilter.addEventListener("click", () => {
+    filters.forEach((f) => f.classList.remove("active"));
+    document
+      .querySelector('.filter[data-category="all"]')
+      .classList.add("active");
+    showAllListings();
+    hideFilterStatus();
+  });
+
+  // Set "All" as default active filter
+  document
+    .querySelector('.filter[data-category="all"]')
+    .classList.add("active");
+
+  // toogle
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const filtersContainer = document.getElementById("filters");
+
+    if (!filtersContainer) return;
+
+    // Add smooth scrolling class
+    filtersContainer.classList.add("horizontal-scroll");
+
+    // Touch/swipe support for mobile
+    let startX = 0;
+    let scrollLeft = 0;
+    let isDragging = false;
+
+    filtersContainer.addEventListener("touchstart", function (e) {
+      startX = e.touches[0].pageX - filtersContainer.offsetLeft;
+      scrollLeft = filtersContainer.scrollLeft;
+      isDragging = true;
+    });
+
+    filtersContainer.addEventListener("touchmove", function (e) {
+      if (!isDragging) return;
+      e.preventDefault();
+
+      const x = e.touches[0].pageX - filtersContainer.offsetLeft;
+      const walk = (x - startX) * 2; // Scroll speed multiplier
+      filtersContainer.scrollLeft = scrollLeft - walk;
+    });
+
+    filtersContainer.addEventListener("touchend", function () {
+      isDragging = false;
+    });
+
+    // Mouse drag support for desktop
+    filtersContainer.addEventListener("mousedown", function (e) {
+      isDragging = true;
+      startX = e.pageX - filtersContainer.offsetLeft;
+      scrollLeft = filtersContainer.scrollLeft;
+      filtersContainer.style.cursor = "grabbing";
+    });
+
+    filtersContainer.addEventListener("mouseleave", function () {
+      isDragging = false;
+      filtersContainer.style.cursor = "grab";
+    });
+
+    filtersContainer.addEventListener("mouseup", function () {
+      isDragging = false;
+      filtersContainer.style.cursor = "grab";
+    });
+
+    filtersContainer.addEventListener("mousemove", function (e) {
+      if (!isDragging) return;
+      e.preventDefault();
+
+      const x = e.pageX - filtersContainer.offsetLeft;
+      const walk = (x - startX) * 2;
+      filtersContainer.scrollLeft = scrollLeft - walk;
+    });
+
+    // Add scroll cursor
+    filtersContainer.style.cursor = "grab";
+
+    // Filter functionality (if you want it)
+    const filters = document.querySelectorAll(".filter");
+    const filterStatus = document.getElementById("filter-status");
+    const filterMessage = document.getElementById("filter-message");
+    const clearFilterBtn = document.getElementById("clear-filter");
+
+    if (filters.length > 0) {
+      filters.forEach((filter) => {
+        filter.addEventListener("click", function (e) {
+          // Prevent drag from triggering click
+          if (isDragging) return;
+
+          // Remove active class from all filters
+          filters.forEach((f) => f.classList.remove("active"));
+
+          // Add active class to clicked filter
+          this.classList.add("active");
+
+          const category = this.getAttribute("data-category");
+          const categoryName = this.querySelector("p").textContent;
+
+          if (category !== "all" && filterStatus && filterMessage) {
+            filterStatus.style.display = "block";
+            filterMessage.textContent = `Showing results for: ${categoryName}`;
+          } else if (filterStatus) {
+            filterStatus.style.display = "none";
+          }
+        });
+      });
+    }
+
+    // Clear filter functionality
+    if (clearFilterBtn) {
+      clearFilterBtn.addEventListener("click", function () {
+        filters.forEach((f) => f.classList.remove("active"));
+        if (filters[0]) {
+          filters.classList.add("active"); // Activate "All" filter
+        }
+        if (filterStatus) {
+          filterStatus.style.display = "none";
+        }
+      });
+    }
+
+    // Keyboard navigation
+    filtersContainer.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        filtersContainer.scrollBy({ left: -100, behavior: "smooth" });
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        filtersContainer.scrollBy({ left: 100, behavior: "smooth" });
+      }
+    });
+
+    // Make container focusable for keyboard navigation
+    filtersContainer.setAttribute("tabindex", "0");
+  });
+</script>
